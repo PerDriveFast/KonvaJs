@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/konva@7.2.1/konva.min.js"></script>
+    <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+    <div>
+        <select id="signatureSelect">
+            <option value="ChooseSignature">Chọn chữ ký</option>
+            <option value="signature1">Chữ ký 1</option>
+            <option value="signature2">Chữ ký 2</option>
+        </select>
+        <input type="text" id="customText" placeholder="Nhập nội dung">
+        <button id="add-text-button">Add Text</button> <!-- New button for adding text -->
+        <button id="save-button">Save Data</button> <!-- Button to save data to JSON -->
+        <button id="delete-all-button">Delete All</button>
+
+    </div>
+    <br>
+
+    <br>
+    <br>
+    <div id="signatureContainer" style="border: 3px solid aqua;">
+    </div>
+
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item" id="edit-option">Edit</div>
+        <div class="context-menu-item" id="delete-option">Delete</div>
+    </div>
+    <br>
+
+    <script>
+        const stage = new Konva.Stage({
+            container: 'signatureContainer',
+            width: window.innerWidth,
+            height: 400,
+        });
+
+        const layer = new Konva.Layer();
+        stage.add(layer);
+
+        const signatureSelect = document.getElementById('signatureSelect');
+        const signatureImage = document.getElementById('signatureImage');
+        let draggableImages = [];
+        let draggableTexts = [];
+
+
+        // Xoá biến theo dõi xem hình ảnh đã được hiển thị hay chưa
+        let imageDisplayed = false;
+        let currentImage = null; // Biến để theo dõi hình ảnh hiện tại
+
+        signatureSelect.addEventListener('change', () => {
+            const selectedValue = signatureSelect.value;
+
+            if (selectedValue === 'ChooseSignature') {
+                // Nếu người dùng chọn "Chọn chữ ký", không cần thực hiện gì cả
+                return;
+            }
+
+            // Tạo một hình ảnh mới
+            const imageSrc = (selectedValue === 'signature1') ?
+                'https://apichukysoflames.xyz/ImgChuKy/2022-12-25T163A243A46.316Zchuky1_thay.png' :
+                'https://apichukysoflames.xyz/ImgChuKy/2022-12-25T163A243A48.698Zchuky2_thay.png';
+
+            const image = new Image();
+            image.src = imageSrc;
+
+            image.onload = () => {
+                const newImage = new Konva.Image({
+                    image: image,
+                    x: 0,
+                    y: 0,
+                    draggable: true, // Cho phép di chuyển hình ảnh
+                    stroke: 'blue', // Đặt màu viền
+                    strokeWidth: 2, // Đặt độ dày viền
+                });
+
+                layer.add(newImage);
+                stage.draw();
+            }
+        });
+
+
+
+
+        // Sử dụng một biến để lưu trữ phần tử đang được chọn (text hoặc image)
+        let selectedElement = null;
+
+        // Thêm sự kiện contextmenu vào cả văn bản và hình ảnh
+        stage.on('contextmenu', (e) => {
+            e.evt.preventDefault();
+            const contextMenu = document.getElementById('context-menu');
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = e.evt.clientX + 'px';
+            contextMenu.style.top = e.evt.clientY + 'px';
+
+            const editOption = document.getElementById('edit-option');
+            const deleteOption = document.getElementById('delete-option');
+
+            // Khi click vào nút "Edit"
+            editOption.onclick = () => {
+                if (selectedElement) {
+                    if (selectedElement instanceof Konva.Text) {
+                        const newText = prompt("Edit text:", selectedElement.text());
+                        if (newText !== null) {
+                            selectedElement.text(newText);
+                            layer.draw();
+                        }
+                    } else if (selectedElement instanceof Konva.Image) {
+                        alert("Choose option different");
+                    }
+                }
+                contextMenu.style.display = 'none';
+            };
+
+            // Khi click vào nút "Delete"
+            deleteOption.onclick = () => {
+                if (selectedElement) {
+                    selectedElement.destroy();
+                    layer.draw();
+                }
+                contextMenu.style.display = 'none';
+            };
+
+            // Đặt phần tử đang được chọn dựa vào vị trí click
+            const clickedShape = stage.getIntersection({
+                x: e.evt.layerX,
+                y: e.evt.layerY
+            });
+            if (clickedShape) {
+                selectedElement = clickedShape;
+            }
+        });
+
+        // Thêm sự kiện click chuột trái để bỏ chọn phần tử
+        stage.on('click', () => {
+            selectedElement = null;
+        });
+
+        const customText = document.getElementById('customText').value;
+
+        // Đặt kích thước font mặc định (ví dụ: 18px)
+        const fontSize = 26;
+        // Add event listener for the "Add Text" button
+        document.getElementById('add-text-button').addEventListener('click', () => {
+            const customText = document.getElementById('customText').value;
+            if (customText) {
+                const text = new Konva.Text({
+                    text: customText,
+                    x: 50, // You can set the desired X and Y coordinates
+                    y: 50,
+                    draggable: true,
+                    fontSize: fontSize, // Đặt kích thước font ở đây
+                    draggable: true,
+                });
+
+                layer.add(text);
+                draggableTexts.push(text);
+                layer.draw();
+            }
+        });
+
+        // Add event listener for the "Delete All" button
+        document.getElementById('delete-all-button').addEventListener('click', () => {
+            for (const image of layer.getChildren(node => node instanceof Konva.Image)) {
+                image.destroy();
+            }
+            for (const text of layer.getChildren(node => node instanceof Konva.Text)) {
+                text.destroy();
+            }
+            layer.draw();
+        });
+
+        // Add event listener for the "Save Data" button
+        document.getElementById('save-button').addEventListener('click', () => {
+            const stageData = {
+                images: [],
+                texts: []
+            };
+
+            for (const image of layer.getChildren(node => node instanceof Konva.Image)) {
+                stageData.images.push({
+                    x: image.x(),
+                    y: image.y(),
+                    src: image.getImage().src
+                });
+            }
+
+            for (const text of layer.getChildren(node => node instanceof Konva.Text)) {
+                stageData.texts.push({
+                    x: text.x(),
+                    y: text.y(),
+                    text: text.text()
+                });
+            }
+
+            const stageDataJSON = JSON.stringify(stageData);
+
+            // Create a Blob with the JSON string
+            const blob = new Blob([stageDataJSON], {
+                type: 'application/json'
+            });
+
+            // Create a URL for the Blob
+            const url = URL.createObjectURL(blob);
+
+            // Create a link to download the JSON file
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'stageData.json';
+
+            // Trigger a click event on the link to initiate the download
+            a.click();
+        });
+    </script>
+
+</body>
+
+</html>
